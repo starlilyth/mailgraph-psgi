@@ -8,11 +8,12 @@ mailgraph is a very simple mail statistics RRDtool frontend for Postfix
 that produces daily, weekly, monthly and yearly graphs of received/sent 
 and bounced/rejected mail (SMTP traffic).
 
-Get it from:
+Originally from:
 
-
-         http://mailgraph.schweikert.ch/
+   http://mailgraph.schweikert.ch/
 	 ===============================
+
+This PSGI version available from: https://github.com/starlilyth/mailgraph-psgi
 
 
 Required Modules
@@ -21,10 +22,14 @@ Required Modules
 - rrdtool and it's perl module (RRDs)
   -> http://oss.oetiker.ch/rrdtool/
 
-- File::Tail (which requires Time::HiRes)
-  -> get it from CPAN
+- File::Tail
 
-Note that several Linux distributions will already have these modules as RPMs.
+- Parse::Syslog
+
+- Plack::Request
+
+Note that several Linux distributions will already have these modules as packages
+(e.g. 'perl-Plack').
 
 
 Usage
@@ -58,11 +63,13 @@ mailgraph is made of two scripts:
   If -c is not specified, mailgraph will monitor logfile for Postfix log entries
   in logfile (/var/log/syslog unless -l is specified).
 
-- mailgraph.cgi
+- mailgraph.psgi
 
-  This is a CGI script that does generate graphics from the RRD database.
+  This is a standalone psgi app that generates graphics from the RRD database and
+  writes the HTML page.
 
-  You have probably to change $rrd to point to where the RRD database is stored.
+  Change $rrd_dir to point to where the RRD databases are if you are not using the
+  default location.
 
   Note that "Bounced", "Viruses", and "Spam" are stacked one on another in the
   graph, whereas "Rejected" is a line.
@@ -70,13 +77,13 @@ mailgraph is made of two scripts:
 
 Installation
 ------------
+Make sure the rrd directory (/var/log/mailgraph by default) exists.
 
-See the file mailgraph-init for an example init script that you can use to
-start mailgraph at system boot.
+See the file mailgraph.service for an example systemd script that you can use to
+start mailgraph.pl at system boot.
 
-You need to put mailgraph.cgi on somewhere accessible though a web-server, it
-needs to be executeable and the web-server needs to execute it as a CGI.
-
+You can serve mailgraph.psgi to a web server with an app server like Nginx Unit,
+Starman, or just plackup.
 
 License
 -------

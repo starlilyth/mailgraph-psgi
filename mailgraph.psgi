@@ -1,32 +1,36 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env plackup
 
 # mailgraph -- postfix mail traffic statistics
 # copyright (c) 2000-2007 ETH Zurich
 # copyright (c) 2000-2007 David Schweikert <david@schweikert.ch>
 # released under the GNU General Public License
+# Plack-ified by Lily Star <github.com/starlilyth>
 
+use strict;
+use warnings;
 use RRDs;
 use POSIX qw(uname);
+use Plack::Request;
 
-my $VERSION = "1.14";
+my $rrd_dir = '/var/log/mailgraph'; # path to where the RRD databases are
+my $tmp_dir = '/tmp'; # temporary directory where the images are stored
 
+my $VERSION = "2.0";
 my $host = (POSIX::uname())[1];
-my $scriptname = 'mailgraph.cgi';
+my $scriptname = 'mailgraph.psgi';
 my $xpoints = 540;
 my $points_per_sample = 3;
 my $ypoints = 160;
 my $ypoints_err = 96;
-my $rrd = 'mailgraph.rrd'; # path to where the RRD database is
-my $rrd_virus = 'mailgraph_virus.rrd'; # path to where the Virus RRD database is
-my $tmp_dir = '/tmp/mailgraph'; # temporary directory where to store the images
+my $rrd = "$rrd_dir/mailgraph.rrd";
+my $rrd_virus = "$rrd_dir/mailgraph_virus.rrd";
+my $content;
 
-# note: the following ranges must match with the RRA ranges
-# created in mailgraph.pl, otherwise the totals won't match.
 my @graphs = (
 	{ title => 'Last Day',   seconds => 3600*24,        },
 	{ title => 'Last Week',  seconds => 3600*24*7,      },
-	{ title => 'Last Month', seconds => 3600*24*7*5,     },
-	{ title => 'Last Year',  seconds => 3600*24*7*5*12, },
+	{ title => 'Last Month', seconds => 3600*24*31,     },
+	{ title => 'Last Year',  seconds => 3600*24*365, },
 );
 
 my %color = (
@@ -155,9 +159,7 @@ sub graph_err($$)
 
 sub print_html()
 {
-	print "Content-Type: text/html\n\n";
-
-	print <<HEADER;
+	$content = <<HEADER;
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
 <head>
@@ -165,64 +167,84 @@ sub print_html()
 <title>Mail statistics for $host</title>
 <meta http-equiv="Refresh" content="300" />
 <meta http-equiv="Pragma" content="no-cache" />
-<link rel="stylesheet" href="mailgraph.css" type="text/css" />
+<style>
+*     { margin: 0; padding: 0 }
+body  { width: 630px; background-color: white;
+	font-family: sans-serif;
+	font-size: 12pt;
+	margin: 5px }
+h1    { margin-top: 20px; margin-bottom: 30px;
+        text-align: center }
+h2    { background-color: #ddd;
+	padding: 2px 0 2px 4px }
+hr    { height: 1px;
+	border: 0;
+	border-top: 1px solid #aaa }
+table { border: 0px; width: 100% }
+img   { border: 0 }
+a     { text-decoration: none; color: #00e }
+a:hover  { text-decoration: underline; }
+#jump    { margin: 0 0 10px 4px }
+#jump li { list-style: none; display: inline;
+           font-size: 90%; }
+#jump li:after            { content: "|"; }
+#jump li:last-child:after { content: ""; }
+</style>
 </head>
 <body>
 HEADER
 
-	print "<h1>Mail statistics for $host</h1>\n";
+	$content .= "<h1>Mail statistics for $host</h1>\n";
 
-	print "<ul id=\"jump\">\n";
+	$content .= "<ul id=\"jump\">\n";
 	for my $n (0..$#graphs) {
-		print "  <li><a href=\"#G$n\">$graphs[$n]{title}</a>&nbsp;</li>\n";
+		$content .= "  <li><a href=\"#G$n\">$graphs[$n]{title}</a>&nbsp;</li>\n";
 	}
-	print "</ul>\n";
+	$content .= "</ul>\n";
 
 	for my $n (0..$#graphs) {
-		print "<h2 id=\"G$n\">$graphs[$n]{title}</h2>\n";
-		print "<p><img src=\"$scriptname?${n}-n\" alt=\"mailgraph\"/><br/>\n";
-		print "<img src=\"$scriptname?${n}-e\" alt=\"mailgraph\"/></p>\n";
+		$content .=  "<h2 id=\"G$n\">$graphs[$n]{title}</h2>\n";
+		$content .=  "<p><img src=\"$scriptname?${n}-n\" alt=\"mailgraph\"/><br/>\n";
+		$content .=  "<img src=\"$scriptname?${n}-e\" alt=\"mailgraph\"/></p>\n";
 	}
 
-	print <<FOOTER;
+	$content .=  <<FOOTER;
 <hr/>
 <table><tr><td>
-<a href="http://mailgraph.schweikert.ch/">Mailgraph</a> $VERSION
-by <a href="http://david.schweikert.ch/">David Schweikert</a></td>
+<a href="http://mailgraph.schweikert.ch/">Mailgraph</a>
+originally by <a href="http://david.schweikert.ch/">David Schweikert</a></td>
 <td align="right">
-<a href="http://oss.oetiker.ch/rrdtool/"><img src="http://oss.oetiker.ch/rrdtool/.pics/rrdtool.gif" alt="" width="120" height="34"/></a>
-</td></tr></table>
+<!-- <a href="http://oss.oetiker.ch/rrdtool/"><img src="http://oss.oetiker.ch/rrdtool/.pics/rrdtool.gif" alt="" width="120" height="34"/></a> -->
+</td>
+</tr><tr>
+<td>PSGI version $VERSION by <a href="https://github.com/starlilyth/mailgraph-psgi">Lily Star</a></td>
+<td></td></tr>
+</table>
 </body></html>
 FOOTER
+
+	return $content;
 }
 
 sub send_image($)
 {
 	my ($file)= @_;
-
-	-r $file or do {
-		print "Content-type: text/plain\n\nERROR: can't find $file\n";
-		exit 1;
-	};
-
-	print "Content-type: image/png\n" unless $ARGV[0];
-	print "Content-length: ".((stat($file))[7])."\n" unless $ARGV[0];
-	print "\n" unless $ARGV[0];
 	open(IMG, $file) or die;
 	my $data;
-	print $data while read(IMG, $data, 16384)>0;
+	$content = $data while read(IMG, $data, 25000)>0;
+	return $content;
 }
 
-sub main()
+sub main($$)
 {
-	my $uri = $ENV{REQUEST_URI} || '';
+	my ($req_uri, $qry_str) = @_;
+	my $uri = $req_uri || '';
 	$uri =~ s/\/[^\/]+$//;
 	$uri =~ s/\//,/g;
 	$uri =~ s/(\~|\%7E)/tilde,/g;
-	mkdir $tmp_dir, 0777 unless -d $tmp_dir;
-	mkdir "$tmp_dir/$uri", 0777 unless -d "$tmp_dir/$uri";
-
-	my $img = $ARGV[0] || $ENV{QUERY_STRING};
+	mkdir $tmp_dir, 0755 unless -d $tmp_dir;
+	mkdir "$tmp_dir/$uri", 0755 unless -d "$tmp_dir/$uri";
+	my $img = $qry_str;
 	if(defined $img and $img =~ /\S/) {
 		if($img =~ /^(\d+)-n$/) {
 			my $file = "$tmp_dir/$uri/mailgraph_$1.png";
@@ -243,4 +265,19 @@ sub main()
 	}
 }
 
-main;
+my $app = sub {
+  my $env = shift;
+  my $req = Plack::Request->new($env);
+  my $req_uri = $req->request_uri;
+  my $qry_str = $req->query_string;
+  main($req_uri, $qry_str);
+  my $res = $req->new_response(200);
+  if(defined $qry_str and $qry_str =~ /\S/) {
+	  $res->content_type('image/png');
+  }
+  else {
+	  $res->content_type('text/html');
+  }
+  $res->body($content);
+  return $res->finalize;
+};

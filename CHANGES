@@ -1,3 +1,10 @@
+2.0 (2022-11-19) (Lily Star)
+-----------------
+* converted from CGI to standalone PSGI app
+* changed default rrd/log directory
+* updated README
+* include systemd service file
+
 1.15 (UNRELEASED)
 -----------------
 * sendmail fixes (David Caldwell)

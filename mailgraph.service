@@ -1,0 +1,11 @@
+# systemd unit service file for mailgraph log graphing service
+
+[Unit]
+Description=mailgraph-psgi log graphing service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/mailgraph.pl -l /var/log/maillog -d
+
+[Install]
+WantedBy=multi-user.target
