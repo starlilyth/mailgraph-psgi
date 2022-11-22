@@ -229,9 +229,10 @@ FOOTER
 sub send_image($)
 {
 	my ($file)= @_;
+	my $size = -s $file;
 	open(IMG, $file) or die;
 	my $data;
-	$content = $data while read(IMG, $data, 25000)>0;
+	$content = $data while read(IMG, $data, $size)>0;
 	return $content;
 }
 

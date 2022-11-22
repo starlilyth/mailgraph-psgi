@@ -39,10 +39,9 @@ mailgraph is made of two scripts:
 
 - mailgraph.pl
 
-  This script does parse syslog and updates the RRD database (mailgraph.rrd)
-  in the current directory.
+  This script parses syslog (or maillog) and updates the RRD databases.
 
-  It is a deamon and will monitor your log-file for changes.
+  It is a deamon and will monitor your logfile for changes.
   DO NOT RUN IT WITH CRON!
 
   usage: mailgraph.pl [*options*]
