@@ -15,7 +15,7 @@ use Plack::Request;
 my $rrd_dir = '/var/log/mailgraph'; # path to where the RRD databases are
 my $tmp_dir = '/tmp'; # temporary directory where the images are stored
 
-my $VERSION = "2.0";
+my $VERSION = "2.1";
 my $host = (POSIX::uname())[1];
 my $scriptname = 'mailgraph.psgi';
 my $xpoints = 540;
@@ -49,9 +49,8 @@ sub rrd_graph(@)
 	# choose carefully the end otherwise rrd will maybe pick the wrong RRA:
 	my $end  = time; $end -= $end % $step;
 	my $date = localtime(time);
-	$date =~ s|:|\\:|g unless $RRDs::VERSION < 1.199908;
-
-	my ($graphret,$xs,$ys) = RRDs::graph($file,
+	$date =~ s|:|\\:|g;
+	RRDs::graph($file,
 		'--imgformat', 'PNG',
 		'--width', $xpoints,
 		'--height', $ypoints,
@@ -64,11 +63,8 @@ sub rrd_graph(@)
 		'--color', 'SHADEA#ffffff',
 		'--color', 'SHADEB#ffffff',
 		'--color', 'BACK#ffffff',
-
-		$RRDs::VERSION < 1.2002 ? () : ( '--slope-mode'),
-
+    '--slope-mode',
 		@rrdargs,
-
 		'COMMENT:['.$date.']\r',
 	);
 
@@ -240,9 +236,15 @@ sub main($$)
 {
 	my ($req_uri, $qry_str) = @_;
 	my $uri = $req_uri || '';
+	# trim off query strings
 	$uri =~ s/\/[^\/]+$//;
-	$uri =~ s/\//,/g;
-	$uri =~ s/(\~|\%7E)/tilde,/g;
+	# trim off leading/trailing slash
+	$uri =~ s/^\///;
+	$uri =~ s/\/$//;
+	# change path slashes to dashes
+	$uri =~ s/\//-/g;
+	# convert tildes to a word
+	$uri =~ s/(\~|\%7E)/tilde-/g;
 	mkdir $tmp_dir, 0755 unless -d $tmp_dir;
 	mkdir "$tmp_dir/$uri", 0755 unless -d "$tmp_dir/$uri";
 	my $img = $qry_str;
