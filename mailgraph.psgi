@@ -27,9 +27,9 @@ my $rrd_virus = "$rrd_dir/mailgraph_virus.rrd";
 my $content;
 
 my @graphs = (
-	{ title => 'Last Day',   seconds => 3600*24,        },
-	{ title => 'Last Week',  seconds => 3600*24*7,      },
-	{ title => 'Last Month', seconds => 3600*24*31,     },
+	{ title => 'Last Day',   seconds => 3600*24,     },
+	{ title => 'Last Week',  seconds => 3600*24*7,   },
+	{ title => 'Last Month', seconds => 3600*24*31,  },
 	{ title => 'Last Year',  seconds => 3600*24*365, },
 );
 

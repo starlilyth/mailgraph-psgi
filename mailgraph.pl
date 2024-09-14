@@ -412,9 +412,9 @@ sub process_line($)
 		elsif($text =~ /^Virus found\b/) {
 			event($time, 'virus');# AMaViS 0.3.12 and amavisd-0.1
 		}
-#		elsif($text =~ /^\([\w-]+\) Passed|Blocked BAD-HEADER\b/) {
-#		       event($time, 'badh');
-#		}
+	#	elsif($text =~ /^\([\w-]+\) Passed|Blocked BAD-HEADER\b/) {
+	#	       event($time, 'badh');
+	#	}
 	}
 	elsif($prog eq 'vagatefwd') {
 		# Vexira antivirus (old)
